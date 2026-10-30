@@ -1,8 +1,8 @@
 {
-  "version": "1.2.0",
-  "pck_url": "https://github.com/theviktan/mythmogul-updates/releases/latest",
-  "sha256": "none",
-  "notes": "MythMogul 1.2.0",
+  "version": "1.2.1",
+  "pck_url": "https://github.com/theviktan/mythmogul-updates/releases/download/v1.2.1/mythmogul_1.2.1.pck",
+  "sha256": "504096f5f2a28c0b819b546477e8478eb79475e56e4a1d7754d1fd1047da1c7e",
+  "notes": "Monsters, fishing, alchemy, new icons, Development mode and a new title screen.",
   "min_base": "1.2.0",
-  "download_url": "https://mythmogul.com/download/"
+  "download_url": "https://github.com/theviktan/mythmogul-updates/releases/latest"
 }
