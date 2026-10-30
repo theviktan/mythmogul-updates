@@ -1,0 +1,119 @@
+# =====================================================================
+# .github/workflows/discord-release.yml  (in theviktan/mythmogul-updates)
+#
+# When you publish a release, this posts the FULL release notes to the
+# Discord #patch-notes channel as a nicely formatted card, and pings
+# everyone who chose "Patch Notes Ping".
+#
+# Needs (repository Settings > Secrets and variables > Actions):
+#   Secret   DISCORD_WEBHOOK_URL    the #patch-notes webhook address
+#   Variable DISCORD_PING_ROLE_ID   the Patch Notes Ping role's ID (optional)
+#
+# You can also re-post an older release by hand:
+#   Actions > "Post release to Discord" > Run workflow > type its tag (v1.2.0)
+# =====================================================================
+name: Post release to Discord
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to post (for example v1.2.0)"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  discord:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Post the release notes to Discord
+        env:
+          # Values are passed in as environment variables (never pasted into
+          # the script itself), so text in release notes can't run as code.
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          PING_ROLE: ${{ vars.DISCORD_PING_ROLE_ID }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          R_NAME: ${{ github.event.release.name }}
+          R_TAG: ${{ github.event.release.tag_name }}
+          R_URL: ${{ github.event.release.html_url }}
+          R_BODY: ${{ github.event.release.body }}
+          R_DATE: ${{ github.event.release.published_at }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${WEBHOOK:-}" ]; then
+            echo "::error::The DISCORD_WEBHOOK_URL secret is missing."
+            exit 1
+          fi
+
+          # Run by hand: look the release up by its tag.
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            gh release view "$INPUT_TAG" --repo "$REPO" --json name,tagName,url,body,publishedAt > release.json
+            R_NAME=$(jq -r '.name // ""' release.json)
+            R_TAG=$(jq -r '.tagName' release.json)
+            R_URL=$(jq -r '.url' release.json)
+            R_BODY=$(jq -r '.body // ""' release.json)
+            R_DATE=$(jq -r '.publishedAt' release.json)
+          fi
+
+          TITLE="${R_NAME:-$R_TAG}"
+
+          # Gold card for full downloads, green card for in-game updates.
+          case "$TITLE" in
+            *"(update)"*) KIND="In-game update (installs automatically)"; COLOR=3042111 ;;
+            *)            KIND="Full download"; COLOR=14923874 ;;
+          esac
+
+          # Discord cards hold up to 4,096 characters; long notes are cut
+          # neatly with a pointer to the full notes on GitHub.
+          NOTES="$R_BODY"
+          if [ -z "$NOTES" ]; then
+            NOTES="See the release page for details."
+          elif [ "${#NOTES}" -gt 3900 ]; then
+            NOTES="${NOTES:0:3900}"$'…\n\n**Read the full notes on GitHub (link above).**'
+          fi
+
+          # Optional ping for everyone with the Patch Notes Ping role.
+          CONTENT=""
+          MENTIONS='{"parse":[]}'
+          if [ -n "${PING_ROLE:-}" ]; then
+            CONTENT="<@&${PING_ROLE}> **${TITLE}** is out!"
+            MENTIONS=$(jq -cn --arg r "$PING_ROLE" '{parse: [], roles: [$r]}')
+          fi
+
+          jq -n \
+            --arg content "$CONTENT" \
+            --arg title "$TITLE" \
+            --arg url "$R_URL" \
+            --arg notes "$NOTES" \
+            --arg kind "$KIND" \
+            --arg date "$R_DATE" \
+            --argjson color "$COLOR" \
+            --argjson mentions "$MENTIONS" \
+            '{
+              username: "MythMogul Releases",
+              content: $content,
+              allowed_mentions: $mentions,
+              embeds: [{
+                title: $title,
+                url: $url,
+                description: $notes,
+                color: $color,
+                footer: { text: ("MythMogul: " + $kind) },
+                timestamp: $date
+              }]
+            }' > payload.json
+
+          curl --fail-with-body --silent --show-error \
+            -H "Content-Type: application/json" \
+            --data @payload.json \
+            "$WEBHOOK"
+          echo "Posted \"$TITLE\" to Discord."
