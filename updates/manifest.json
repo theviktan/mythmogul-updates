@@ -1,8 +1,8 @@
 {
-  "version": "1.2.1",
-  "pck_url": "https://github.com/theviktan/mythmogul-updates/releases/download/v1.2.1/mythmogul_1.2.1.pck",
-  "sha256": "504096f5f2a28c0b819b546477e8478eb79475e56e4a1d7754d1fd1047da1c7e",
-  "notes": "Monsters, fishing, alchemy, new icons, Development mode and a new title screen.",
+  "version": "1.2.2",
+  "pck_url": "https://github.com/theviktan/mythmogul-updates/releases/download/v1.2.2/mythmogul_1.2.2.pck",
+  "sha256": "9d2c11f8d713b93b98d7b189a1aaf0a104c260bccc7187ecd3b682828d14857b",
+  "notes": "Monsters look like themselves, a tabbed den menu, and main menu fixes.",
   "min_base": "1.2.0",
   "download_url": "https://github.com/theviktan/mythmogul-updates/releases/latest"
 }
